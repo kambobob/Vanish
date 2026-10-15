@@ -1,0 +1,19 @@
+name: Vanish
+version: '${project.version}'
+main: me.vanish.VanishPlugin
+api-version: '26.2'
+folia-supported: true
+description: Toggle vanish with /vanish or /v
+commands:
+  vanish:
+    description: Toggle vanish mode
+    aliases: [v]
+    usage: /<command>
+    permission: vanish.use
+permissions:
+  vanish.use:
+    description: Allows using /vanish
+    default: op
+  vanish.see:
+    description: Allows seeing vanished players
+    default: op
