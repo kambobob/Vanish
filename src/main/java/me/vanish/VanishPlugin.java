@@ -11,10 +11,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -29,7 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Folia-compatible vanish plugin.
  * /vanish or /v toggles vanish: fake leave/join message, hidden from tab list and
- * from every player's view, flight enabled, mobs ignore you, no item pickup.
+ * from every player's view, flight enabled, mobs ignore you, no item pickup,
+ * no damage. Sets the "vanished" metadata flag so plugins like TAB can detect it.
  *
  * Every Player operation runs on that player's own entity scheduler, as Folia requires.
  */
@@ -89,6 +92,7 @@ public final class VanishPlugin extends JavaPlugin implements Listener {
         vanished.remove(id);
         Boolean prev = previousFlight.remove(id);
         saveData();
+        setVanishFlag(player, false);
 
         GameMode mode = player.getGameMode();
         boolean keepFlight = (prev != null && prev)
@@ -109,6 +113,7 @@ public final class VanishPlugin extends JavaPlugin implements Listener {
 
     /** Applies the vanished state to a player. Must run on that player's thread. */
     private void applyVanishState(Player player) {
+        setVanishFlag(player, true);
         player.setAllowFlight(true);
         player.setCollidable(false);
         player.setAffectsSpawning(false);
@@ -117,6 +122,15 @@ public final class VanishPlugin extends JavaPlugin implements Listener {
         for (Player other : Bukkit.getOnlinePlayers()) {
             if (other.equals(player) || other.hasPermission(SEE_PERMISSION)) continue;
             other.getScheduler().run(this, task -> other.hidePlayer(this, player), null);
+        }
+    }
+
+    /** Marks the player as vanished for other plugins such as TAB. */
+    private void setVanishFlag(Player player, boolean isVanished) {
+        if (isVanished) {
+            player.setMetadata("vanished", new FixedMetadataValue(this, true));
+        } else {
+            player.removeMetadata("vanished", this);
         }
     }
 
@@ -164,6 +178,14 @@ public final class VanishPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onPickup(EntityPickupItemEvent event) {
+        if (event.getEntity() instanceof Player p && vanished.contains(p.getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Vanished players take no damage of any kind. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Player p && vanished.contains(p.getUniqueId())) {
             event.setCancelled(true);
         }
