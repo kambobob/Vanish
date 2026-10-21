@@ -3,17 +3,21 @@ version: '${project.version}'
 main: me.vanish.VanishPlugin
 api-version: '26.2'
 folia-supported: true
-description: Toggle vanish with /vanish or /v
+softdepend: [PlaceholderAPI]
+description: Toggle vanish for yourself or other players
 commands:
   vanish:
-    description: Toggle vanish mode
+    description: Toggle vanish mode (optionally for another player)
     aliases: [v]
-    usage: /<command>
+    usage: /<command> [player]
     permission: vanish.use
 permissions:
   vanish.use:
-    description: Allows using /vanish
+    description: Allows using /vanish on yourself
+    default: op
+  vanish.others:
+    description: Allows using /vanish <player> on other players
     default: op
   vanish.see:
-    description: Allows seeing vanished players
+    description: Allows seeing and pinging vanished players
     default: op
