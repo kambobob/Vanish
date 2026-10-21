@@ -10,9 +10,11 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
@@ -62,6 +64,7 @@ public final class VanishPlugin extends JavaPlugin implements Listener {
     private volatile Set<String> blockedCommands = new HashSet<>();
     private volatile String staffPermission = "vanish.use";
     private volatile boolean fakeMessages = true;
+    private volatile String unvanishOnHit = "players";
     private File dataFile;
 
     @Override
@@ -89,6 +92,7 @@ public final class VanishPlugin extends JavaPlugin implements Listener {
         reloadConfig();
         staffPermission = getConfig().getString("staff-permission", "vanish.use");
         fakeMessages = getConfig().getBoolean("fake-messages", true);
+        unvanishOnHit = getConfig().getString("unvanish-on-hit", "players").toLowerCase(Locale.ROOT);
 
         Set<String> cmds = new HashSet<>();
         for (String s : getConfig().getStringList("blocked-commands")) {
@@ -367,6 +371,35 @@ public final class VanishPlugin extends JavaPlugin implements Listener {
         if (event.getEntity() instanceof Player p && vanished.contains(p.getUniqueId())) {
             event.setCancelled(true);
         }
+    }
+
+    /**
+     * A vanished player who lands a hit becomes visible again.
+     * Runs at MONITOR so hits cancelled by other plugins (e.g. PvP off) do not count.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onHit(EntityDamageByEntityEvent event) {
+        String mode = unvanishOnHit;
+        if (mode.equals("off")) return;
+
+        Player attacker = null;
+        if (event.getDamager() instanceof Player direct) {
+            attacker = direct;
+        } else if (event.getDamager() instanceof Projectile projectile
+                && projectile.getShooter() instanceof Player shooter) {
+            attacker = shooter;
+        }
+        if (attacker == null || !vanished.contains(attacker.getUniqueId())) return;
+        if (mode.equals("players") && !(event.getEntity() instanceof Player)) return;
+
+        final Player hitter = attacker;
+        // The attacker may live in a different region than the victim, so use their own scheduler.
+        hitter.getScheduler().run(this, task -> {
+            if (!vanished.contains(hitter.getUniqueId())) return;
+            unvanish(hitter);
+            hitter.sendMessage(Component.text(
+                    "You attacked someone, so you are no longer vanished.", NamedTextColor.YELLOW));
+        }, null);
     }
 
     /** Vanished players take no damage of any kind. */
