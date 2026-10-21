@@ -1,0 +1,15 @@
+# Players with this permission count as "staff" for %vanish_staffonline%.
+staff-permission: vanish.use
+
+# Broadcast a fake "left the game" / "joined the game" message when someone vanishes or unvanishes.
+fake-messages: true
+
+# Private message commands that act as if a vanished player is offline.
+blocked-commands:
+  - msg
+  - tell
+  - w
+  - whisper
+  - m
+  - t
+  - pm
