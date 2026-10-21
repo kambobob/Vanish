@@ -13,3 +13,9 @@ blocked-commands:
   - m
   - t
   - pm
+
+# What happens when a vanished player hits something:
+#   players - hitting another player makes you visible again (default)
+#   all     - hitting any entity (mobs too) makes you visible again
+#   off     - vanished players stay vanished when they attack
+unvanish-on-hit: players
